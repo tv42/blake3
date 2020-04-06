@@ -150,4 +150,7 @@ func TestAPI_Errors(t *testing.T) {
 
 	_, err = NewKeyedSized(make([]byte, 31), 8)
 	assert.Error(t, err)
+
+	_, err = DeriveKeySized("example use only", []byte("foo"), -1)
+	assert.Error(t, err)
 }

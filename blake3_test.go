@@ -45,3 +45,19 @@ func TestVectors_KeyedHash(t *testing.T) {
 		testHasher(t, h, tv.input(), tv.keyedHash)
 	}
 }
+
+func TestVectors_DeriveKey(t *testing.T) {
+	for _, tv := range vectors {
+		// DeriveKey is implemented quite differently from the other
+		// modes, it's basically a two-stage hash where the context is
+		// hashed into an IV for the "real" hash. At this point, we
+		// should have faith in the internal workings of hasher, so
+		// test key derivation through the API.
+		h, err := DeriveKeySized(testVectorContext, tv.input(), hex.DecodedLen(len(tv.deriveKey)))
+		if err != nil {
+			t.Fatalf("DeriveKeSized: %v", err)
+		}
+		derived := h.Sum(nil)
+		assert.Equal(t, hex.EncodeToString(derived), tv.deriveKey)
+	}
+}

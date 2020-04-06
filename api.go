@@ -75,6 +75,47 @@ func NewKeyedSized(key []byte, size int) (*Hasher, error) {
 	return h, nil
 }
 
+// DeriveKey derives a key based on reusable key material of any
+// length, in the given context. Context strings must be hardcoded
+// constants, and the recommended format is "[application] [commit
+// timestamp] [purpose]", e.g., "example.com 2019-12-25 16:18:03
+// session tokens v1".
+func DeriveKey(context string, material []byte) *Hasher {
+	return deriveKeySized(context, material, 32)
+}
+
+// DeriveKeySized derives a key of a desired size. See DeriveKey.
+func DeriveKeySized(context string, material []byte, size int) (*Hasher, error) {
+	if size < 0 {
+		return nil, errors.New("invalid output size")
+	}
+	h := deriveKeySized(context, material, size)
+	return h, nil
+}
+
+func deriveKeySized(context string, material []byte, size int) *Hasher {
+	// hash the context string and use that instead of IV
+	c := hasher{
+		key:   consts.IV,
+		flags: consts.Flag_DeriveKeyContext,
+	}
+	c.update([]byte(context))
+	b := make([]byte, 32)
+	c.finalize(b)
+
+	h := &Hasher{
+		size: size,
+		h: hasher{
+			key:   consts.IV,
+			flags: consts.Flag_DeriveKeyMaterial,
+		},
+	}
+	utils.KeyFromBytes(b, &h.h.key)
+	h.h.update(material)
+
+	return h
+}
+
 // Write implements part of the hash.Hash interface. It never returns an error.
 func (h *Hasher) Write(p []byte) (int, error) {
 	h.h.update(p)
